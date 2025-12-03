@@ -1,0 +1,52 @@
+# Core dependencies
+streamlit>=1.24.0
+python-dotenv>=1.0.0
+
+# LangChain and LangGraph dependencies
+langchain==0.3.26
+langchain_google_genai
+langchain-community
+langchain-core
+langchain-text-splitters
+langgraph
+langgraph-sdk
+
+# Google AI/Cloud dependencies
+google-genai
+google-generativeai
+
+# Vector stores
+langchain-chroma
+chromadb
+#pysqlite3-binary
+
+# Document processing
+pypdf>=3.15.1
+langchain-community>=0.0.10
+
+# Audio processing
+openai-whisper>=20231117
+assemblyai>=0.17.0
+audio-recorder-streamlit>=0.0.8
+av>=10.0.0  # Required for audio processing
+pydub>=0.25.1  # For audio duration detection
+websockets>=12.0  # For AssemblyAI real-time streaming
+
+# Local TTS (optional, for offline/local speech generation)
+# TTS>=0.22.0  # Coqui TTS for local human-like speech (Python 3.9-3.11 only)
+edge-tts>=6.1.9  # Microsoft Edge TTS - FREE, fast (2-4s), works with Python 3.12
+# kokoro-tts>=0.1.0  # Kokoro TTS - High-quality but slower (15-20s)
+# torch>=2.0.0  # Usually already installed with whisper
+
+# PDF generation
+fpdf>=1.7.2
+reportlab>=4.0.4
+
+# Visualization
+graphviz>=0.20.1
+ipython>=8.12.0
+
+# Optional: for development
+# pytest>=7.3.1
+# black>=23.3.0
+# isort>=5.12.0
