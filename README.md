@@ -79,15 +79,6 @@ and other utilities listed in `requirements.txt`.
 
 The app loads environment variables via `python-dotenv` at the top of `interview.py`:
 
-```python
-from dotenv import load_dotenv
-load_dotenv()
-```
-
-and **requires**:
-
-- **`GOOGLE_API_KEY`** – *mandatory* (used for Gemini / Google Generative AI)
-- **`ASSEMBLYAI_API_KEY`** – *optional but recommended* if you want cloud STT
 
 ### 5.1 Create `.env`
 
@@ -95,13 +86,10 @@ In the project root (`4MS`), create a file named `.env`:
 
 ```text
 GOOGLE_API_KEY=your_google_api_key_here
-ASSEMBLYAI_API_KEY=your_assemblyai_api_key_here
 ```
 
 Notes:
 - `GOOGLE_API_KEY` **must** be set; otherwise the app raises an error on startup.
-- `ASSEMBLYAI_API_KEY` can be omitted if you only want local Whisper STT.
-- Do **not** commit `.env` to Git; it should stay local (it should already be gitignored).
 
 If you have an `.env.example` file, you can copy it:
 
@@ -226,17 +214,15 @@ After the interview finishes:
 
 For collaboration on GitHub, see `GITHUB_SETUP.md` in this repo. In summary:
 
-- **Create feature branches** from `main`:
-  - `git checkout main`
-  - `git pull origin main`
-  - `git checkout -b feature/your-feature-name`
-- Make changes, then:
+- **Get the latest changes** on your existing clone:
+  - `git checkout main`                # switch to main branch
+  - `git pull origin main`             # pull latest from GitHub
+
+
+- **Make changes and push**:
   - `git add .`
   - `git commit -m "Clear description of your changes"`
   - `git push -u origin feature/your-feature-name`
-- Open a **Pull Request** on GitHub and request a review.
-
-This keeps the main branch stable and makes it easy for the team to review each other’s work.
 
 ---
 
