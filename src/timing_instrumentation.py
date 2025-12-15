@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict
 from typing import Dict, Any, List, Optional
 
 # Windows path requested by you
-TIME_REPORT_DIR = r"C:\Users\96658\Desktop\TalentTalk\Time Ananlysis Reports"
+TIME_REPORT_DIR = r"C:\Users\96658\Desktop\4MS\Time Ananlysis Reports"
 os.makedirs(TIME_REPORT_DIR, exist_ok=True)
 
 @dataclass
