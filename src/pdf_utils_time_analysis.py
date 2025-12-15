@@ -6,7 +6,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from timing_instrumentation import StepTiming, TIME_REPORT_DIR
+from src.timing_instrumentation import StepTiming, TIME_REPORT_DIR
 
 def generate_time_analysis_pdf(candidate_name: str,
                                position: str,
