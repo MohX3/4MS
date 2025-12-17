@@ -269,8 +269,8 @@ Support each with brief evidence from the transcript where clearly applicable.
 
 ### Areas for Development & Critical Gaps
 List 2–3 areas where the candidate showed gaps or limitations.
-- If the candidate attempted an answer but was weak, label as **"Development Area"**.
-- If the candidate failed to provide a response or completely missed the question (Score 1/5), label as **"CRITICAL GAP"**.
+- If the candidate attempted an answer but was weak, label it as **"Development Area"**.
+- If the candidate failed to provide a response or completely missed the question (Score 1/5), label it as **"CRITICAL GAP"**.
 Reference transcript examples only if they clearly illustrate the issue.
 
 ### Technical Skills Demonstrated
