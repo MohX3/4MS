@@ -255,6 +255,7 @@ Report Guidelines:
 - Avoid speculation.
 - Keep the report concise and decision-oriented.
 - Communication assessment should focus on clarity of explanation, NOT accent, grammar, or speaking style.
+- **Handling Missing Data:** If the evaluation report indicates a score of 1/5 due to "No response provided," categorize this strictly as a "CRITICAL GAP," distinct from a general weakness.
 - IMPORTANT: Job Description Reference (Use as Baseline for All Conclusions)
 
 Your report should include the following sections:
@@ -266,8 +267,10 @@ Provide a brief summary of the candidate’s overall suitability for the {positi
 List 2–3 strengths demonstrated during the interview.
 Support each with brief evidence from the transcript where clearly applicable.
 
-### Areas for Development
-List 2–3 areas where the candidate showed gaps or limitations, based on the evaluation.
+### Areas for Development & Critical Gaps
+List 2–3 areas where the candidate showed gaps or limitations.
+- If the candidate attempted an answer but was weak, label as **"Development Area"**.
+- If the candidate failed to provide a response or completely missed the question (Score 1/5), label as **"CRITICAL GAP"**.
 Reference transcript examples only if they clearly illustrate the issue.
 
 ### Technical Skills Demonstrated
