@@ -64,6 +64,19 @@ def format_retriever_output(result):
     return str(result)
 
 
+def get_content_as_string(content):
+    """
+    Safely convert message content to string, handling list content from some LLM providers.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(str(c) for c in content if c)
+    return str(content)
+
+
 class AgentState(TypedDict):
     mode: str
     num_of_q: int
@@ -495,7 +508,11 @@ def recruiter(state: AgentState) -> AgentState:
         for attempt in range(max_retries):
             response = llm.bind_tools(tools).invoke(all_messages)
             has_tool_calls = bool(getattr(response, 'tool_calls', None))
-            has_content = bool(response.content and response.content.strip())
+            # Handle case where content is a list (some LLM providers) or string
+            content = response.content
+            if isinstance(content, list):
+                content = " ".join(str(c) for c in content if c)
+            has_content = bool(content and content.strip())
 
             print(f"[DEBUG] Recruiter response (attempt {attempt+1}) - has tool_calls: {has_tool_calls}, has content: {has_content}")
 
@@ -545,19 +562,20 @@ def evaluator(state: AgentState) -> AgentState:
     # Build the interview transcript for evaluation
     interview_transcript = []
     for m in state["messages"]:
+        content_str = get_content_as_string(m.content)
         # Stop evaluation before the candidate Q&A closing segment
-        if isinstance(m, AIMessage) and m.content and "do you have any questions for me" in m.content.lower():
+        if isinstance(m, AIMessage) and content_str and "do you have any questions for me" in content_str.lower():
             break
 
         if isinstance(m, HumanMessage):
-            if m.content and m.content.strip():
-                interview_transcript.append(f"Candidate: {m.content}")
+            if content_str and content_str.strip():
+                interview_transcript.append(f"Candidate: {content_str}")
         elif isinstance(m, AIMessage):
             # Only include AIMessages with actual content
-            if m.content and m.content.strip():
+            if content_str and content_str.strip():
                 # Exclude the final "that's it for today" message from evaluation
-                if "that's it for today" not in m.content.lower():
-                    interview_transcript.append(f"AI Recruiter: {m.content}")
+                if "that's it for today" not in content_str.lower():
+                    interview_transcript.append(f"AI Recruiter: {content_str}")
 
     # Validate we have content to evaluate
     if not interview_transcript or len(interview_transcript) < 2:
@@ -637,15 +655,16 @@ def report_writer(state: AgentState) -> AgentState:
 
     interviewer_transcript = []
     for m in state["messages"]:
+        content_str = get_content_as_string(m.content)
         # Stop transcript before the candidate Q&A closing segment
-        if isinstance(m, AIMessage) and m.content and "do you have any questions for me" in m.content.lower():
+        if isinstance(m, AIMessage) and content_str and "do you have any questions for me" in content_str.lower():
             break
 
         if isinstance(m, HumanMessage):
-            interviewer_transcript.append('Candidate: ' + str(m.content))
+            interviewer_transcript.append('Candidate: ' + content_str)
         elif isinstance(m, AIMessage):
-            if m.content and 'Evaluation:\n1. Introduction question' not in m.content:
-                interviewer_transcript.append('AI Recruiter: ' + str(m.content))
+            if content_str and 'Evaluation:\n1. Introduction question' not in content_str:
+                interviewer_transcript.append('AI Recruiter: ' + content_str)
 
     sys_prompt = report_writer_prompt.format(
         position=state['position'],
@@ -712,7 +731,7 @@ def custom_tools_condition(state):
         return "tools"
     
     # Check if interview is ending
-    elif isinstance(last_message, AIMessage) and last_message.content and "that's it for today" in last_message.content.lower():
+    elif isinstance(last_message, AIMessage) and last_message.content and "that's it for today" in get_content_as_string(last_message.content).lower():
         print("[DEBUG] Interview ending, routing to evaluator")
         return "END_CONVERSATION"
     
