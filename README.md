@@ -2,7 +2,7 @@
 
 4MSHire AI is a **Streamlit** web app that:
 - **Filters CVs** against a Job Description using Google Gemini and LangChain
-- **Runs voice‑based technical interviews** with candidates, including STT (Whisper / AssemblyAI) and TTS (Edge/Kokoro)
+- **Runs voice‑based technical interviews** with candidates, including STT (Whisper / AssemblyAI) and TTS (Edge)
 - **Generates HR reports and timing analysis PDFs** for each interview
 
 This README explains how any team member can **set up, run, and use** the project step‑by‑step.
