@@ -107,7 +107,7 @@ Then fill in your own keys.
 From the project root, with the virtual environment **activated** and `.env` configured:
 
 ```bash
-streamlit run interview.py
+streamlit run app.py
 ```
 
 Streamlit will print a local URL such as:
