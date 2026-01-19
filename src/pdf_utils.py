@@ -308,14 +308,14 @@ def generate_pdf(content, filename="HR_Report.pdf"):
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cccccc')))
     story.append(Spacer(1, 0.15*inch))
     
-    # Footer with 4MSHire AI branding
+    # Footer with IntiqAI branding
     footer_content = f"""
     <b>Report Prepared By:</b><br/>
-    4MSHire AI - AI Recruitment System<br/>
+    IntiqAI - AI Recruitment System<br/>
     <br/>
     <b>Report Generated:</b> {get_current_datetime_4ms()}<br/>
     <b>Timezone:</b> UTC+3 (Gulf Standard Time)<br/>
-    <b>System:</b> 4MSHire AI v1.0
+    <b>System:</b> IntiqAI v1.0
     """
     
     story.append(Paragraph(footer_content, styles['footer']))

@@ -1,4 +1,4 @@
-﻿import json
+import json
 import time
 from groq import Groq
 from typing import Dict, Any
@@ -63,7 +63,7 @@ class EvaluationEngine:
             elif final_overall >= 60:
                 evaluation['recommendation'] = 'No (Underperforms, Consider Junior Role)'
             else:
-                evaluation['recommendation'] = 'Strong No (Rejection)'
+                evaluation['recommendation'] = 'Not Recommended (Rejection)'
             
             evaluation['evaluation_time_seconds'] = evaluation_time
             evaluation['interviewer_used'] = "Fundamental Knowledge Evaluator"
@@ -285,7 +285,7 @@ Return ONLY valid JSON:
         elif calculated_overall >= 60:
             recommendation = 'No (Underperforms, Consider Junior Role)'
         else:
-            recommendation = 'Strong No (Rejection)'
+            recommendation = 'Not Recommended (Rejection)'
         
         display_scores = {k: v for k, v in question_scores.items() if k != 'OVERALL'}
         

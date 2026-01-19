@@ -1,5 +1,5 @@
 """
-Test and Evaluation Script for 4MSHire AI Interview Stage
+Test and Evaluation Script for IntiqAI Interview Stage
 ==========================================================
 This script tests the interview workflow system with:
 - 20 different job descriptions across various positions
@@ -2428,7 +2428,7 @@ def save_outputs(results: List[InterviewResult], summary: TestSummary):
     analysis_path = os.path.join(OUTPUT_DIR, f"detailed_analysis_{timestamp}.txt")
     with open(analysis_path, 'w', encoding='utf-8') as f:
         f.write("=" * 80 + "\n")
-        f.write("4MSHIRE AI - INTERVIEW STAGE TEST AND EVALUATION REPORT\n")
+        f.write("INTIQAI - INTERVIEW STAGE TEST AND EVALUATION REPORT\n")
         f.write("=" * 80 + "\n")
         f.write(f"Test Date: {timestamp}\n")
         f.write(f"Total Interviews Conducted: {summary.total_interviews}\n")
@@ -2535,7 +2535,7 @@ def save_outputs(results: List[InterviewResult], summary: TestSummary):
 def run_tests(num_interviews: int = 20):
     """Run the full test suite"""
     print("=" * 80)
-    print("4MSHIRE AI - INTERVIEW STAGE TESTING")
+    print("INTIQAI - INTERVIEW STAGE TESTING")
     print("=" * 80)
     print(f"Starting {num_interviews} interview simulations...")
 
@@ -2613,7 +2613,7 @@ def run_tests(num_interviews: int = 20):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Test 4MSHire AI Interview Stage")
+    parser = argparse.ArgumentParser(description="Test IntiqAI Interview Stage")
     parser.add_argument("--num", type=int, default=20, help="Number of interviews to run")
     args = parser.parse_args()
 

@@ -94,7 +94,7 @@ class AgentState(TypedDict):
 
 # --- TIMEZONE-AWARE DATE FUNCTIONS (UTC+3) ---
 def get_current_date_4ms():
-    """Get current date in UTC+3 timezone (4MSHire AI timezone)"""
+    """Get current date in UTC+3 timezone (IntiqAI timezone)"""
     try:
         tz = pytz.timezone('Asia/Kuwait')  # UTC+3
         current = datetime.now(tz)

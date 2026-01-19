@@ -1,5 +1,5 @@
 """
-Interview Session Module for 4MSHire AI
+Interview Session Module for IntiqAI
 
 This module manages interview sessions including audio handling
 and timing instrumentation. Minimal Streamlit dependencies.

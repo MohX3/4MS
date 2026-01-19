@@ -1,5 +1,5 @@
 """
-CV Filtering Module for 4MSHire AI
+CV Filtering Module for IntiqAI
 
 This module provides CV/resume filtering, evaluation, and export functionality.
 No Streamlit dependencies - pure Python logic.

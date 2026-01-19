@@ -1,5 +1,5 @@
 """
-4MSHire AI - Main Streamlit Application
+IntiqAI - Main Streamlit Application
 
 AI-powered voice-based technical interview system.
 Run with: streamlit run app.py
@@ -84,12 +84,20 @@ from src.dynamic_workflow import build_workflow, AgentState
 from src.timing_instrumentation import ensure_session, timing_start, timing_end, TIME_REPORT_DIR
 from src.pdf_utils_time_analysis import generate_time_analysis_pdf
 
+# Fundamental Knowledge Assessment modules
+import sys
+sys.path.append("Fundamental knowledge Assessment")
+from core.evaluator import EvaluationEngine
+from core.question_generator import QuestionGenerator
+from core.jd_parser import JDParser
+import json
+
 
 # ============================================================================
 # PAGE CONFIGURATION
 # ============================================================================
 
-st.set_page_config(page_title="4MSHire AI", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="IntiqAI", layout="wide", initial_sidebar_state="expanded")
 
 
 # ============================================================================
@@ -284,7 +292,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="main-header">
-    <h1>4MSHire AI</h1>
+    <h1>IntiqAI</h1>
     <p>AI-powered voice-based technical interviews</p>
 </div>
 """, unsafe_allow_html=True)
@@ -315,6 +323,12 @@ def init_session_state():
         "timings": [],
         "turn_idx": 0,
         "resumes_dir": "",
+        "fundamental_assessment_completed": False,
+        "fundamental_assessment_results": None,
+        "fundamental_questions": [],
+        "fundamental_responses": [],
+        "fundamental_evaluation": None,
+        "fundamental_questions_generated": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -694,49 +708,135 @@ def render_candidate_list_page():
             st.markdown(f"### 👤 {row['First Name']} {row['Last Name']}")
 
         with col2:
+            # Show CV Filtering Score
             if 'Overall Fit' in st.session_state.candidates_df.columns:
-                score = row.get('Overall Fit', 'N/A')
-                if score != 'N/A':
-                    st.metric("Score", f"{score}/10")
+                cv_score = row.get('Overall Fit', 'N/A')
+                if cv_score != 'N/A':
+                    st.metric("CV Score", f"{cv_score}/10")
                 else:
-                    st.write("Score: N/A")
+                    st.write("CV Score: N/A")
+            
+            # Show Fundamental Assessment Score if available
+            if 'Fundamental Knowledge Score' in st.session_state.candidates_df.columns:
+                fundamental_score = row.get('Fundamental Knowledge Score')
+                if pd.notna(fundamental_score) and isinstance(fundamental_score, (int, float)):
+                    score_color = "green" if fundamental_score >= 80 else "red"
+                    st.markdown(f"""
+                    <div style="background: {'#d1fae5' if fundamental_score >= 80 else '#fef3c7'}; 
+                                padding: 0.5rem; border-radius: 8px; margin-top: 0.5rem; 
+                                border-left: 4px solid {'#10b981' if fundamental_score >= 80 else '#f59e0b'};">
+                        <strong>Fundamental Score:</strong> {int(fundamental_score)}/100<br>
+                        <small>Minimum: 80</small>
+                    </div>
+                    """, unsafe_allow_html=True)
 
         with col3:
-            if st.button(f"🎤 Start Interview", key=f"interview_{index}", use_container_width=True):
-                st.session_state.selected_candidate_index = index
-                candidate_info = st.session_state.candidates_df.loc[index]
-
-                resume_text = candidate_info.get('Full Resume', '')
-                if not resume_text or len(str(resume_text).strip()) < 50:
-                    st.error(f"❌ Resume text is missing or too short for candidate {candidate_info.get('First Name', '')} {candidate_info.get('Last Name', '')}. Please check the Excel file.")
-                    st.stop()
-
-                position = st.session_state.get("position", "AI Specialist")
-                if not position or position.strip() == "":
-                    position = "AI Specialist"
-
-                st.session_state.state = AgentState(
-                    mode="friendly",
-                    num_of_q=2,
-                    num_of_follow_up=1,
-                    position=position,
-                    company_name="Prince Mogrin University",
-                    messages=[],
-                    evaluation_result="",
-                    report="",
-                    pdf_path=None,
-                    resume_path=None,
-                    questions_path=None,
-                    resume_text=str(resume_text)
-                )
-
-                st.session_state.app_page = "interview"
-                st.session_state.timings = []
-                st.session_state.turn_idx = 0
-                st.session_state.time_analysis_generated = False
-                st.session_state.auto_start_interview = True
-                st.session_state.interview_stage = "switching"
-                st.rerun()
+            # Check if assessment already completed for this candidate
+            assessment_completed = False
+            score_meets_requirement = False
+            
+            if st.session_state.selected_candidate_index == index:
+                assessment_completed = st.session_state.get("fundamental_assessment_completed", False)
+                if assessment_completed:
+                    evaluation = st.session_state.get("fundamental_evaluation")
+                    if evaluation:
+                        score = evaluation.get('overall_score', 0)
+                        score_meets_requirement = score >= 80
+            
+            # Also check Excel file for score if available
+            if not score_meets_requirement and 'Fundamental Knowledge Score' in st.session_state.candidates_df.columns:
+                candidate_score = row.get('Fundamental Knowledge Score')
+                if pd.notna(candidate_score) and isinstance(candidate_score, (int, float)):
+                    score_meets_requirement = candidate_score >= 80
+                    assessment_completed = True
+            
+            if assessment_completed and score_meets_requirement:
+                if st.button(f"Proceed to Interview", key=f"interview_{index}", use_container_width=True):
+                    st.session_state.selected_candidate_index = index
+                    candidate_info = st.session_state.candidates_df.loc[index]
+                    
+                    resume_text = candidate_info.get('Full Resume', '')
+                    if not resume_text or len(str(resume_text).strip()) < 50:
+                        st.error(f"Resume text is missing or too short for candidate {candidate_info.get('First Name', '')} {candidate_info.get('Last Name', '')}. Please check the Excel file.")
+                        st.stop()
+                    
+                    position = st.session_state.get("position", "AI Specialist")
+                    if not position or position.strip() == "":
+                        position = "AI Specialist"
+                    
+                    st.session_state.state = AgentState(
+                        mode="friendly",
+                        num_of_q=2,
+                        num_of_follow_up=1,
+                        position=position,
+                        company_name="Prince Mogrin University",
+                        messages=[],
+                        evaluation_result="",
+                        report="",
+                        pdf_path=None,
+                        resume_path=None,
+                        questions_path=None,
+                        resume_text=str(resume_text)
+                    )
+                    
+                    st.session_state.app_page = "interview"
+                    st.session_state.timings = []
+                    st.session_state.turn_idx = 0
+                    st.session_state.time_analysis_generated = False
+                    st.session_state.auto_start_interview = True
+                    st.session_state.interview_stage = "switching"
+                    st.rerun()
+            elif assessment_completed and not score_meets_requirement:
+                # Show that assessment was completed but score is too low - allow viewing results
+                if st.button(f"View Assessment Results", key=f"view_assessment_{index}", use_container_width=True):
+                    st.session_state.selected_candidate_index = index
+                    # Try to load evaluation from session state first
+                    evaluation = st.session_state.get("fundamental_evaluation")
+                    if evaluation and st.session_state.get("fundamental_assessment_completed", False):
+                        # Evaluation already in session state, just navigate
+                        st.session_state.app_page = "fundamental_assessment"
+                        st.rerun()
+                    else:
+                        # Load from Excel if available
+                        candidate_score = row.get('Fundamental Knowledge Score')
+                        if pd.notna(candidate_score):
+                            # Set assessment as completed and navigate to view results
+                            st.session_state.fundamental_assessment_completed = True
+                            # Create a basic evaluation structure from Excel data
+                            st.session_state.fundamental_evaluation = {
+                                'overall_score': int(candidate_score),
+                                'recommendation': row.get('Fundamental Recommendation', 'Not Recommended (Rejection)'),
+                                'qualitative_feedback': f"Assessment completed with a score of {int(candidate_score)}/100. This score does not meet the minimum requirement of 80/100.",
+                                'strengths': [],
+                                'weaknesses': ['Score below minimum requirement'],
+                                'criterion_scores': {
+                                    'technical_accuracy': int(candidate_score),
+                                    'completeness': int(candidate_score),
+                                    'relevance': int(candidate_score),
+                                    'practicality': int(candidate_score)
+                                },
+                                'question_scores': {}
+                            }
+                            # Try to load question scores from Excel if available
+                            question_scores_str = row.get('Fundamental Question Scores')
+                            if pd.notna(question_scores_str) and question_scores_str:
+                                try:
+                                    import json
+                                    st.session_state.fundamental_evaluation['question_scores'] = json.loads(str(question_scores_str))
+                                except:
+                                    pass
+                        st.session_state.app_page = "fundamental_assessment"
+                        st.rerun()
+            else:
+                if st.button(f"Begin Assessment", key=f"assessment_{index}", use_container_width=True):
+                    st.session_state.selected_candidate_index = index
+                    st.session_state.fundamental_assessment_completed = False
+                    st.session_state.fundamental_questions_generated = False
+                    st.session_state.fundamental_questions = []
+                    st.session_state.fundamental_responses = []
+                    st.session_state.fundamental_evaluation = None
+                    st.session_state.app_page = "fundamental_assessment"
+                    st.rerun()
 
         # Add justification in an expander below each candidate
         if 'Justification' in st.session_state.candidates_df.columns:
@@ -812,11 +912,475 @@ def render_candidate_list_page():
 
 
 # ============================================================================
+# HELPER FUNCTION: Update Excel with Assessment Results
+# ============================================================================
+
+def update_excel_with_assessment_results(candidate_index: int, evaluation: dict):
+    """Update Excel file with fundamental assessment results."""
+    try:
+        excel_path = st.session_state.excel_output_path
+        if not excel_path or not os.path.exists(excel_path):
+            st.warning("Excel file path not found. Assessment results will not be saved to Excel.")
+            return False
+        
+        # Read the Excel file
+        df = pd.read_excel(excel_path)
+        
+        # Add new columns if they don't exist
+        if 'Fundamental Knowledge Score' not in df.columns:
+            df['Fundamental Knowledge Score'] = None
+        if 'Fundamental Recommendation' not in df.columns:
+            df['Fundamental Recommendation'] = None
+        if 'Fundamental Assessment Date' not in df.columns:
+            df['Fundamental Assessment Date'] = None
+        if 'Fundamental Question Scores' not in df.columns:
+            df['Fundamental Question Scores'] = None
+        
+        # Update the row for current candidate
+        df.at[candidate_index, 'Fundamental Knowledge Score'] = evaluation.get('overall_score', 0)
+        df.at[candidate_index, 'Fundamental Recommendation'] = evaluation.get('recommendation', 'N/A')
+        df.at[candidate_index, 'Fundamental Assessment Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Store question scores as JSON string
+        question_scores = evaluation.get('question_scores', {})
+        if question_scores:
+            df.at[candidate_index, 'Fundamental Question Scores'] = json.dumps(question_scores)
+        
+        # Save the updated Excel file
+        df.to_excel(excel_path, index=False)
+        return True
+        
+    except Exception as e:
+        st.error(f"Error updating Excel file: {str(e)}")
+        return False
+
+
+# ============================================================================
+# PAGE: FUNDAMENTAL KNOWLEDGE ASSESSMENT
+# ============================================================================
+
+def render_fundamental_assessment_page():
+    """Render the fundamental knowledge assessment page."""
+    if st.session_state.candidates_df is None or st.session_state.selected_candidate_index is None:
+        st.warning("No candidate selected. Please select a candidate from the list.")
+        if st.button("Back to Candidate List"):
+            st.session_state.app_page = "candidate_list"
+            st.rerun()
+        return
+    
+    candidate_info = st.session_state.candidates_df.loc[st.session_state.selected_candidate_index]
+    candidate_name = f"{candidate_info['First Name']} {candidate_info['Last Name']}"
+    
+    # Check for Groq API key
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if not groq_api_key:
+        st.error("GROQ_API_KEY not found. Please set it in your .env file to use Fundamental Knowledge Assessment.")
+        if st.button("Back to Candidate List"):
+            st.session_state.app_page = "candidate_list"
+            st.rerun()
+        return
+    
+    # Initialize assessment system
+    if 'assessment_system' not in st.session_state:
+        try:
+            model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+            st.session_state.assessment_system = {
+                'evaluator': EvaluationEngine(groq_api_key, model),
+                'question_generator': QuestionGenerator(groq_api_key, model),
+            }
+        except Exception as e:
+            st.error(f"Error initializing assessment system: {str(e)}")
+            return
+    
+    # Get JD and role from session state
+    job_description = st.session_state.get("job_description", "")
+    role = st.session_state.get("position", "AI Specialist")
+    
+    if not job_description or len(job_description.strip()) < 50:
+        st.error("Job description not found. Please run CV filtering first.")
+        if st.button("Back to CV Filtering"):
+            st.session_state.app_page = "cv_filtering_setup"
+            st.rerun()
+        return
+    
+    # Header
+    st.markdown(f"""
+    <div style="background: white; padding: 2rem; border-radius: 15px; margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+        <h2 style="color: #333; margin-bottom: 1rem;">Fundamental Knowledge Assessment</h2>
+        <p style="color: #666; margin: 0;">Candidate: <strong>{candidate_name}</strong> | Role: <strong>{role}</strong></p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar
+    st.sidebar.markdown(f"""
+    <div style="background: rgba(102, 126, 234, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+        <strong>Candidate:</strong><br>
+        {candidate_name}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.sidebar.info(f"**Role:** {role}")
+    st.sidebar.info(f"**Model:** {os.getenv('GROQ_MODEL', 'llama-3.1-8b-instant')}")
+    
+    # Configuration: Number of questions
+    if 'fundamental_questions_count' not in st.session_state:
+        # Get from env var or use default
+        st.session_state.fundamental_questions_count = int(os.getenv("FUNDAMENTAL_QUESTIONS_COUNT", 5))
+    
+    num_questions = st.sidebar.number_input(
+        "Number of Questions",
+        min_value=1,
+        max_value=10,
+        value=st.session_state.fundamental_questions_count,
+        help="Set the number of fundamental questions to generate (1-10)",
+        key="num_questions_input"
+    )
+    
+    # Update session state if changed
+    if num_questions != st.session_state.fundamental_questions_count:
+        st.session_state.fundamental_questions_count = num_questions
+        # Reset questions if count changed
+        if st.session_state.fundamental_questions_generated:
+            st.session_state.fundamental_questions_generated = False
+            st.session_state.fundamental_questions = []
+            st.session_state.fundamental_responses = []
+    
+    # Check if assessment is already completed - if so, show results directly
+    if st.session_state.get("fundamental_assessment_completed", False) and st.session_state.get("fundamental_evaluation"):
+        # Skip to results display
+        pass
+    # Step 1: Generate Questions
+    elif not st.session_state.fundamental_questions_generated:
+        st.subheader("Step 1: Generate Assessment Questions")
+        
+        st.info(f"Configured to generate **{num_questions}** fundamental question(s).")
+        
+        if st.button("Generate Fundamental Questions", type="primary", use_container_width=True):
+            with st.spinner(f"Generating {num_questions} fundamental questions for {role}..."):
+                try:
+                    questions = st.session_state.assessment_system['question_generator'].generate_fundamental_questions(
+                        role, job_description, num_questions=num_questions
+                    )
+                    st.session_state.fundamental_questions = questions
+                    st.session_state.fundamental_responses = [""] * len(questions)
+                    st.session_state.fundamental_questions_generated = True
+                    st.session_state.fundamental_assessment_completed = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error generating questions: {str(e)}")
+                    # Use fallback questions
+                    try:
+                        qg = QuestionGenerator(groq_api_key, os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"))
+                        fallback_questions = qg._get_fallback_questions(role)[:num_questions]
+                        st.session_state.fundamental_questions = fallback_questions
+                        st.session_state.fundamental_responses = [""] * len(fallback_questions)
+                        st.session_state.fundamental_questions_generated = True
+                        st.session_state.fundamental_assessment_completed = False
+                        st.info("Using fallback questions instead.")
+                        st.rerun()
+                    except Exception as e2:
+                        st.error(f"Failed to load fallback questions: {str(e2)}")
+    
+    # Step 2: Answer Questions (only show if not already completed)
+    if not st.session_state.get("fundamental_assessment_completed", False) and st.session_state.fundamental_questions_generated and st.session_state.fundamental_questions:
+        st.markdown("---")
+        st.subheader(f"Step 2: Answer Fundamental Questions")
+        st.info(f"{len(st.session_state.fundamental_questions)} questions - Answer each question concisely to test your fundamental knowledge.")
+        
+        # Initialize responses if needed
+        if len(st.session_state.fundamental_responses) != len(st.session_state.fundamental_questions):
+            st.session_state.fundamental_responses = [""] * len(st.session_state.fundamental_questions)
+        
+        # Display each question
+        for i, question in enumerate(st.session_state.fundamental_questions):
+            st.markdown(f"### Question {i+1}/{len(st.session_state.fundamental_questions)}")
+            
+            col_type, col_diff = st.columns(2)
+            with col_type:
+                st.info(f"**Type:** {question['type'].title()}")
+            with col_diff:
+                st.info(f"**Difficulty:** {question['difficulty'].title()}")
+            
+            st.markdown(f"**{question['question']}**")
+            
+            # Show expected keywords if available
+            if question.get('expected_keywords'):
+                with st.expander("Expected keywords (hint)"):
+                    st.write(", ".join(question['expected_keywords']))
+            
+            # Response input
+            response = st.text_area(
+                f"Your Answer (Question {i+1}):",
+                height=150,
+                placeholder="Type your answer here...",
+                value=st.session_state.fundamental_responses[i],
+                key=f"fundamental_response_{i}"
+            )
+            
+            # Update response in session state
+            st.session_state.fundamental_responses[i] = response
+            
+            st.markdown("---")
+        
+        # Submit for Evaluation
+        st.markdown("### Step 3: Submit for Evaluation")
+        
+        # Check if all questions have responses
+        all_answered = all(response.strip() for response in st.session_state.fundamental_responses)
+        
+        if not all_answered:
+            st.warning("Please answer all questions before submitting.")
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("Submit All Answers for Evaluation", 
+                        type="secondary", 
+                        use_container_width=True,
+                        disabled=not all_answered,
+                        key="fundamental_evaluate_btn"):
+                with st.spinner("Evaluating fundamental knowledge..."):
+                    try:
+                        # Prepare responses data
+                        responses_data = []
+                        for i, question in enumerate(st.session_state.fundamental_questions):
+                            responses_data.append({
+                                "question": question['question'],
+                                "type": question['type'],
+                                "difficulty": question['difficulty'],
+                                "expected_keywords": question.get('expected_keywords', []),
+                                "response": st.session_state.fundamental_responses[i],
+                                "response_time": 0.0
+                            })
+                        
+                        # Evaluate
+                        evaluation = st.session_state.assessment_system['evaluator'].evaluate_fundamental_responses(
+                            role,
+                            job_description[:1000],
+                            st.session_state.fundamental_questions,
+                            responses_data
+                        )
+                        
+                        st.session_state.fundamental_evaluation = evaluation
+                        st.session_state.fundamental_assessment_completed = True
+                        
+                        # Update Excel file
+                        update_excel_with_assessment_results(
+                            st.session_state.selected_candidate_index,
+                            evaluation
+                        )
+                        
+                        st.success("Assessment completed successfully!")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error during evaluation: {str(e)}")
+                        import traceback
+                        st.code(traceback.format_exc())
+    
+    # Step 3: Show Results
+    if st.session_state.fundamental_assessment_completed and st.session_state.fundamental_evaluation:
+        st.markdown("---")
+        st.subheader("Assessment Results")
+        
+        evaluation = st.session_state.fundamental_evaluation
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Fundamental Score", f"{evaluation['overall_score']}/100", 
+                      help="Score based on essential knowledge for the role")
+        with col2:
+            rec = evaluation['recommendation']
+            st.metric("Recommendation", rec, 
+                      help="Hiring recommendation based on fundamental knowledge")
+        
+        st.markdown("---")
+        
+        st.markdown("##### Qualitative Feedback")
+        st.info(evaluation['qualitative_feedback'])
+        
+        # Display criterion scores
+        st.markdown("##### Criterion Scores")
+        if 'criterion_scores' in evaluation:
+            crit_df = pd.DataFrame([
+                {"Criterion": "Technical Accuracy", "Score": evaluation['criterion_scores'].get('technical_accuracy', 0)},
+                {"Criterion": "Completeness", "Score": evaluation['criterion_scores'].get('completeness', 0)},
+                {"Criterion": "Relevance", "Score": evaluation['criterion_scores'].get('relevance', 0)},
+                {"Criterion": "Practicality", "Score": evaluation['criterion_scores'].get('practicality', 0)}
+            ])
+            st.bar_chart(crit_df.set_index('Criterion'))
+        
+        # Display question scores if available
+        if 'question_scores' in evaluation and evaluation['question_scores']:
+            st.markdown("##### Question-wise Scores")
+            scores_data = []
+            for q_key, score in evaluation['question_scores'].items():
+                scores_data.append({
+                    "Question": q_key[:50] + "..." if len(q_key) > 50 else q_key,
+                    "Score": score,
+                })
+            if scores_data:
+                scores_df = pd.DataFrame(scores_data)
+                st.bar_chart(scores_df.set_index('Question'))
+        
+        st.markdown("##### Strengths")
+        if evaluation.get('strengths'):
+            for s in evaluation['strengths']:
+                st.write(f"• {s}")
+        else:
+            st.write("No specific strengths identified.")
+        
+        st.markdown("##### Weaknesses")
+        if evaluation.get('weaknesses'):
+            for w in evaluation['weaknesses']:
+                st.write(f"• {w}")
+        else:
+            st.write("No significant weaknesses identified.")
+        
+        # Check if score meets minimum requirement (80)
+        score = evaluation.get('overall_score', 0)
+        meets_requirement = score >= 80
+        
+        st.markdown("---")
+        
+        if not meets_requirement:
+            # Show apology message if score is below 80
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+                        padding: 2rem; border-radius: 15px; margin: 2rem 0; 
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #f59e0b;">
+                <h3 style="color: #92400e; margin: 0 0 1rem 0; font-size: 1.5rem;">
+                    Assessment Result
+                </h3>
+                <p style="color: #78350f; margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.6;">
+                    Thank you for completing the Fundamental Knowledge Assessment. 
+                    We appreciate the time and effort you've invested in this process.
+                </p>
+                <p style="color: #78350f; margin: 1rem 0 0.5rem 0; font-size: 1.1rem; line-height: 1.6;">
+                    Unfortunately, your assessment score of <strong>{score}/100</strong> does not meet 
+                    our minimum requirement of 80/100 to proceed to the voice interview stage.
+                </p>
+                <p style="color: #78350f; margin: 1rem 0 0; font-size: 1.1rem; line-height: 1.6;">
+                    We encourage you to continue developing your skills and consider applying again in the future. 
+                    We wish you the best of luck in your career journey.
+                </p>
+            </div>
+            """.format(score=score), unsafe_allow_html=True)
+            
+            # Show feedback for improvement
+            st.markdown("### Feedback for Improvement")
+            st.info("""
+            Based on your assessment, we recommend focusing on the following areas:
+            - Review the fundamental concepts related to the role
+            - Practice with hands-on projects to strengthen practical knowledge
+            - Consider additional training or certification in key technical areas
+            - Stay updated with industry best practices and trends
+            """)
+        else:
+            # Show success message and allow proceeding
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+                        padding: 2rem; border-radius: 15px; margin: 2rem 0; 
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #10b981;">
+                <h3 style="color: #065f46; margin: 0 0 1rem 0; font-size: 1.5rem;">
+                    Congratulations!
+                </h3>
+                <p style="color: #047857; margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.6;">
+                    You have successfully passed the Fundamental Knowledge Assessment with a score of <strong>{score}/100</strong>.
+                </p>
+                <p style="color: #047857; margin: 1rem 0 0; font-size: 1.1rem; line-height: 1.6;">
+                    You may now proceed to the voice interview stage.
+                </p>
+            </div>
+            """.format(score=score), unsafe_allow_html=True)
+            
+            # Button to proceed to interview (only if score >= 80)
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button("Proceed to Voice Interview", type="primary", use_container_width=True):
+                    # Initialize interview state
+                    candidate_info = st.session_state.candidates_df.loc[st.session_state.selected_candidate_index]
+                    resume_text = candidate_info.get('Full Resume', '')
+                    
+                    if not resume_text or len(str(resume_text).strip()) < 50:
+                        st.error(f"Resume text is missing or too short. Please check the Excel file.")
+                        st.stop()
+                    
+                    position = st.session_state.get("position", "AI Specialist")
+                    if not position or position.strip() == "":
+                        position = "AI Specialist"
+                    
+                    st.session_state.state = AgentState(
+                        mode="friendly",
+                        num_of_q=2,
+                        num_of_follow_up=1,
+                        position=position,
+                        company_name="Prince Mogrin University",
+                        messages=[],
+                        evaluation_result="",
+                        report="",
+                        pdf_path=None,
+                        resume_path=None,
+                        questions_path=None,
+                        resume_text=str(resume_text)
+                    )
+                    
+                    st.session_state.app_page = "interview"
+                    st.session_state.timings = []
+                    st.session_state.turn_idx = 0
+                    st.session_state.time_analysis_generated = False
+                    st.session_state.auto_start_interview = True
+                    st.session_state.interview_stage = "switching"
+                    st.rerun()
+        
+        # Button to go back
+        if st.button("Back to Candidate List"):
+            # Preserve assessment data when going back so it can be viewed again
+            # The evaluation is already saved in Excel and session state
+            st.session_state.app_page = "candidate_list"
+            st.rerun()
+
+
+# ============================================================================
 # PAGE: INTERVIEW
 # ============================================================================
 
 def render_interview_page():
     """Render the interview page."""
+    # Check if fundamental assessment is completed
+    if not st.session_state.get("fundamental_assessment_completed", False):
+        st.warning("Please complete the Fundamental Knowledge Assessment before proceeding to the interview.")
+        if st.button("Go to Assessment"):
+            st.session_state.app_page = "fundamental_assessment"
+            st.rerun()
+        return
+    
+    # Check if score meets minimum requirement (80)
+    evaluation = st.session_state.get("fundamental_evaluation")
+    if evaluation:
+        score = evaluation.get('overall_score', 0)
+        if score < 80:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+                        padding: 2rem; border-radius: 15px; margin: 2rem 0; 
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-left: 5px solid #f59e0b;">
+                <h3 style="color: #92400e; margin: 0 0 1rem 0; font-size: 1.5rem;">
+                    Access Restricted
+                </h3>
+                <p style="color: #78350f; margin: 0.5rem 0; font-size: 1.1rem; line-height: 1.6;">
+                    Your Fundamental Knowledge Assessment score of <strong>{score}/100</strong> does not meet 
+                    our minimum requirement of 80/100 to proceed to the voice interview stage.
+                </p>
+                <p style="color: #78350f; margin: 1rem 0 0; font-size: 1.1rem; line-height: 1.6;">
+                    We appreciate your interest and encourage you to continue developing your skills.
+                </p>
+            </div>
+            """.format(score=score), unsafe_allow_html=True)
+            
+            if st.button("Back to Candidate List"):
+                st.session_state.app_page = "candidate_list"
+                st.rerun()
+            return
+    
     if st.session_state.candidates_df is None or st.session_state.selected_candidate_index is None:
         st.warning("No candidate selected. Please select a candidate from the list.")
         if st.button("🔙 Back to Candidate List"):
@@ -1322,6 +1886,7 @@ PAGE_HANDLERS = {
     "cv_filtering_setup": render_cv_filtering_setup_page,
     "filtering_process": render_filtering_process_page,
     "candidate_list": render_candidate_list_page,
+    "fundamental_assessment": render_fundamental_assessment_page,
     "interview": render_interview_page,
 }
 

@@ -288,7 +288,7 @@ def main():
             with col_time:
                 if i in st.session_state.response_start_time:
                     elapsed = time.time() - st.session_state.response_start_time[i]
-                    st.write(f"⏱️ Time: {elapsed/60:.1f} minutes")
+                    st.write(f"Time: {elapsed/60:.1f} minutes")
             
             st.markdown("---")
         

@@ -608,7 +608,7 @@ def play_audio_html5(audio_path, wait=True):
         return 0.0
 
 
-st.set_page_config(page_title="4MSHire AI", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="IntiqAI", layout="wide", initial_sidebar_state="expanded")
 
 # Custom CSS for beautiful UI
 st.markdown("""
@@ -793,7 +793,7 @@ st.markdown("""
 # Header with gradient
 st.markdown("""
 <div class="main-header">
-    <h1>4MSHire AI</h1>
+    <h1>IntiqAI</h1>
     <p>AI-powered voice-based technical interviews</p>
 </div>
 """, unsafe_allow_html=True)

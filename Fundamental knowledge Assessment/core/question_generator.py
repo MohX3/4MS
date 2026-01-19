@@ -1,4 +1,5 @@
-﻿import json
+import json
+import os
 from groq import Groq
 
 class QuestionGenerator:
@@ -6,10 +7,22 @@ class QuestionGenerator:
         self.client = Groq(api_key=api_key)
         self.model = model if model else "llama-3.1-8b-instant"
     
-    def generate_fundamental_questions(self, role: str, job_description: str):
-        """Generate fundamental coding/knowledge questions based on JD"""
+    def generate_fundamental_questions(self, role: str, job_description: str, num_questions: int = None):
+        """Generate fundamental coding/knowledge questions based on JD
         
-        prompt = f"""Generate 5 fundamental questions for a {role} position.
+        Args:
+            role: Job role/title
+            job_description: Job description text
+            num_questions: Number of questions to generate (default: from config or env, fallback: 5)
+        """
+        # Get number of questions from parameter, env var, or default
+        if num_questions is None:
+            num_questions = int(os.getenv("FUNDAMENTAL_QUESTIONS_COUNT", 5))
+        
+        # Ensure minimum of 1 and maximum of 10 questions
+        num_questions = max(1, min(10, num_questions))
+        
+        prompt = f"""Generate {num_questions} fundamental questions for a {role} position.
 
 Job Description: {job_description[:1500]}
 
@@ -26,7 +39,7 @@ For non-technical roles, focus on:
 - Practical scenario questions
 - Tool/process questions
 
-Return JSON format with exactly 5 questions:
+Return JSON format with exactly {num_questions} questions:
 {{
   "questions": [
     {{
@@ -41,7 +54,7 @@ Return JSON format with exactly 5 questions:
 Make questions specific to the role and JD."""
         
         try:
-            print(f"Generating fundamental questions from JD using {self.model}...")
+            print(f"Generating {num_questions} fundamental questions from JD using {self.model}...")
             
             chat_completion = self.client.chat.completions.create(
                 messages=[
@@ -56,7 +69,7 @@ Make questions specific to the role and JD."""
                 ],
                 model=self.model,
                 temperature=0.7,
-                max_tokens=800,
+                max_tokens=800 + (num_questions * 50),  # Adjust tokens based on question count
                 response_format={"type": "json_object"}
             )
             
@@ -66,13 +79,13 @@ Make questions specific to the role and JD."""
             questions_data = json.loads(response_text.strip())
             questions = questions_data.get("questions", [])
             
-            # Ensure we have exactly 5 questions
-            if len(questions) > 5:
-                questions = questions[:5]
-            elif len(questions) < 5:
+            # Ensure we have the correct number of questions
+            if len(questions) > num_questions:
+                questions = questions[:num_questions]
+            elif len(questions) < num_questions:
                 # Add fallback questions if needed
                 fallback = self._get_fallback_questions(role)
-                questions.extend(fallback[:5 - len(questions)])
+                questions.extend(fallback[:num_questions - len(questions)])
             
             print(f"Successfully generated {len(questions)} questions.")
             return questions
@@ -80,7 +93,7 @@ Make questions specific to the role and JD."""
         except Exception as e:
             print(f"Question generation error: {e}")
             print("Using fallback questions instead.")
-            return self._get_fallback_questions(role)[:5]
+            return self._get_fallback_questions(role)[:num_questions]
     
     def _get_fallback_questions(self, role):
         """Fallback fundamental questions"""

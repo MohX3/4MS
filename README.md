@@ -1,6 +1,6 @@
-## 4MSHire AI – Voice‑Based Technical Interview & CV Screening
+## IntiqAI – Voice‑Based Technical Interview & CV Screening
 
-4MSHire AI is a **Streamlit** web app that:
+IntiqAI is a **Streamlit** web app that:
 - **Filters CVs** against a Job Description using Google Gemini and LangChain
 - **Runs voice‑based technical interviews** with candidates, including STT (Whisper / AssemblyAI) and TTS (Edge/Kokoro)
 - **Generates HR reports and timing analysis PDFs** for each interview
@@ -116,13 +116,13 @@ Streamlit will print a local URL such as:
 Local URL: http://localhost:8501
 ```
 
-Open that URL in your browser to use the 4MSHire AI app.
+Open that URL in your browser to use the IntiqAI app.
 
 ---
 
 ## 7. Using the App – CV Filtering Workflow
 
-When you open the app (`4MSHire AI`):
+When you open the app (`IntiqAI`):
 
 ### 7.1 CV Filtering Setup Page
 

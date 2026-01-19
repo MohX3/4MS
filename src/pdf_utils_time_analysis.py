@@ -24,7 +24,7 @@ def generate_time_analysis_pdf(candidate_name: str,
 
     doc = SimpleDocTemplate(pdf_path, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     story = []
-    story.append(Paragraph("4MSHire AI – Time Analysis Report", h1))
+    story.append(Paragraph("IntiqAI – Time Analysis Report", h1))
     story.append(Paragraph(f"Candidate: {candidate_name}", body))
     story.append(Paragraph(f"Position: {position}", body))
     story.append(Paragraph(f"Interview Timestamp: {dt_display_local} ({tz_label})", body))
@@ -74,6 +74,6 @@ def generate_time_analysis_pdf(candidate_name: str,
 
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cccccc')))
     story.append(Paragraph(f"Total timed seconds (approx.): {total_all:.3f}", body))
-    story.append(Paragraph("Prepared by: 4MSHire AI – AI Recruitment System", body))
+    story.append(Paragraph("Prepared by: IntiqAI – AI Recruitment System", body))
     doc.build(story)
     return pdf_path
