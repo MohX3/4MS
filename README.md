@@ -2,8 +2,14 @@
 
 IntiqAI is a **Streamlit** web app that:
 - **Filters CVs** against a Job Description using Google Gemini and LangChain
+- **Conducts Fundamental Knowledge Assessment** to evaluate essential technical knowledge (text-based, using Groq)
 - **Runs voice‑based technical interviews** with candidates, including STT (Whisper / AssemblyAI) and TTS (Edge)
 - **Generates HR reports and timing analysis PDFs** for each interview
+
+**Complete Workflow:**
+```
+CV Filtering → Fundamental Knowledge Assessment → Voice Interview → Reports
+```
 
 This README explains how any team member can **set up, run, and use** the project step‑by‑step.
 
@@ -16,22 +22,25 @@ This README explains how any team member can **set up, run, and use** the projec
 - A GitHub account (for pulling/pushing code)
 - Recommended OS: Windows 10/11, macOS, or Linux
 
+Required:
+- **Google AI Studio / Google Cloud** account for a **Gemini API key** (required for CV filtering and voice interviews)
+- **Groq** account for a **Groq API key** (required for Fundamental Knowledge Assessment)
+
 Optional but recommended:
-- **Google AI Studio / Google Cloud** account for a **Gemini API key**
 - **AssemblyAI** account for cloud speech‑to‑text (if you want best STT quality)
 
 ---
 
 ## 2. Clone the Repository
 
-On each team member’s machine:
+On each team member's machine:
 
 ```bash
 git clone https://github.com/MohX3/4MS.git
 cd 4MS
 ```
 
-If you’re already in the project folder (because you copied it manually), just make sure your terminal path is the project root (where `interview.py` and `requirements.txt` live).
+If you're already in the project folder (because you copied it manually), just make sure your terminal path is the project root (where `app.py` and `requirements.txt` live).
 
 ---
 
@@ -69,16 +78,18 @@ pip install -r requirements.txt
 This installs:
 - `streamlit` – web UI framework
 - `langchain`, `langgraph`, `google-genai`, `langchain_google_genai` – LLM orchestration & Gemini
+- `groq` – Groq API for Fundamental Knowledge Assessment
 - `openai-whisper`, `assemblyai`, `audio-recorder-streamlit`, `pydub` – audio/STT
 - `reportlab`, `fpdf` – PDF report generation
+- `pandas`, `openpyxl` – Excel file handling
+- `python-docx`, `plotly` – Document processing and visualization
 and other utilities listed in `requirements.txt`.
 
 ---
 
 ## 5. Environment Variables (.env Setup)
 
-The app loads environment variables via `python-dotenv` at the top of `interview.py`:
-
+The app loads environment variables via `python-dotenv` at the top of `app.py`:
 
 ### 5.1 Create `.env`
 
@@ -86,10 +97,19 @@ In the project root (`4MS`), create a file named `.env`:
 
 ```text
 GOOGLE_API_KEY=your_google_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-Notes:
+**Required API Keys:**
 - `GOOGLE_API_KEY` **must** be set; otherwise the app raises an error on startup.
+  - Get your key from: https://makersuite.google.com/app/apikey
+- `GROQ_API_KEY` **must** be set for Fundamental Knowledge Assessment to work.
+  - Get your key from: https://console.groq.com/keys
+
+**Optional Environment Variables:**
+- `GROQ_MODEL` – Groq model to use (default: `llama-3.1-8b-instant`)
+- `FUNDAMENTAL_QUESTIONS_COUNT` – Number of fundamental questions to generate (default: 5, range: 1-10)
+- `ASSEMBLYAI_API_KEY` – For cloud-based speech-to-text (optional)
 
 If you have an `.env.example` file, you can copy it:
 
@@ -130,7 +150,7 @@ When you open the app (`IntiqAI`):
   - Choose or type the folder path that contains **candidate CVs in PDF format**.
   - On Windows this might look like:
     - `C:\Users\YOUR_NAME\Desktop\4MS\uploaded_resumes`
-  - You can click **“📂 Browse”** in the UI to select the folder.
+  - You can click **"📂 Browse"** in the UI to select the folder.
 
 - **Job Description (PDF File)**
   - Upload a **Job Description PDF** (e.g. `Job Descriptions/Front_End_Developer_General_JD.pdf`).
@@ -138,7 +158,7 @@ When you open the app (`IntiqAI`):
 
 Then click:
 
-- **“🚀 Start CV Filtering Process”**
+- **"🚀 Start CV Filtering Process"**
 
 The app will:
 - Improve/structure the Job Description (Gemini)
@@ -152,23 +172,58 @@ After processing, it navigates to the **Candidate List** page.
 
 ---
 
-## 8. Candidate List & Starting Interviews
+## 8. Candidate List & Fundamental Knowledge Assessment
 
 On the **Candidate List** page:
 
-- You’ll see a card per candidate (name and overall fit score).
-- For any candidate, click **“🎤 Start Interview”**.
+- You'll see a card per candidate showing:
+  - Name and CV filtering score (from step 7)
+  - Fundamental Knowledge Assessment score (if completed)
+- For any candidate, click **"Begin Assessment"** to start the Fundamental Knowledge Assessment.
 
-The app will:
-- Load the candidate’s **full resume text** from the Excel file.
-- Use the improved Job Description to set the **position** (e.g. “AI Specialist”).
-- Initialize the interview workflow (LangGraph / LLM agents).
+### 8.1 Fundamental Knowledge Assessment
 
-You’ll then be taken to the **Interview** page.
+The Fundamental Knowledge Assessment is a **mandatory step** before proceeding to the voice interview. It evaluates essential technical knowledge through text-based questions.
+
+**Assessment Process:**
+
+1. **Question Generation**
+   - Questions are automatically generated based on the Job Description and role
+   - Default: 5 questions (configurable via sidebar: 1-10 questions)
+   - Questions are tailored to the specific role (e.g., Frontend Developer, Data Scientist)
+
+2. **Answering Questions**
+   - Candidate answers each question in text format
+   - Questions cover coding, concepts, and tools/libraries relevant to the role
+   - Each question shows type (coding/concept/library) and difficulty level
+
+3. **Evaluation**
+   - Answers are evaluated using Groq LLM
+   - Scoring criteria:
+     - Technical Accuracy (0-100)
+     - Completeness (0-100)
+     - Relevance to Role (0-100)
+     - Practical Knowledge (0-100)
+   - Overall score: Average of all criteria (0-100)
+
+4. **Results & Next Steps**
+   - **If score ≥ 80**: Candidate can proceed to voice interview
+   - **If score < 80**: Candidate receives feedback and cannot proceed
+   - Results are automatically saved to the Excel file with columns:
+     - `Fundamental Knowledge Score`
+     - `Fundamental Recommendation`
+     - `Fundamental Assessment Date`
+     - `Fundamental Question Scores`
+
+**Important:** Candidates must achieve a minimum score of **80/100** to proceed to the voice interview stage.
 
 ---
 
-## 9. Interview Page – Voice‑Based Technical Interview
+## 9. Voice Interview Page – Voice‑Based Technical Interview
+
+**Prerequisite:** Candidate must have completed Fundamental Knowledge Assessment with a score ≥ 80/100.
+
+After successfully completing the Fundamental Knowledge Assessment, candidates can proceed to the voice interview stage.
 
 ### 9.1 Sidebar Settings
 
@@ -188,11 +243,11 @@ You’ll then be taken to the **Interview** page.
   - Records audio
   - Transcribes it using the selected STT model
   - Sends it to the LLM workflow
-  - Plays back the recruiter’s next question/response via TTS
+  - Plays back the recruiter's next question/response via TTS
 
 The app automatically logs **timings** (generation, TTS, playback, STT) and creates **time analysis PDFs** under `Time Ananlysis Reports/`.
 
-When the interview ends (the AI says something like “that’s it for today”), you’ll see an option to **generate evaluation and HR report**.
+When the interview ends (the AI says something like "that's it for today"), you'll see an option to **generate evaluation and HR report**.
 
 ---
 
@@ -200,9 +255,9 @@ When the interview ends (the AI says something like “that’s it for today”)
 
 After the interview finishes:
 
-- Click **“📊 Generate Evaluation and Report”**.
+- Click **"📊 Generate Evaluation and Report"**.
 - The workflow will:
-  - Analyze the candidate’s performance
+  - Analyze the candidate's performance
   - Generate a detailed **evaluation text**
   - Create an **HR report PDF** saved in `generated_reports/`
 - If available, a **Download PDF Report** button will appear in the UI.
@@ -230,19 +285,34 @@ For collaboration on GitHub, see `GITHUB_SETUP.md` in this repo. In summary:
 
 - **`GOOGLE_API_KEY environment variable is not set`**
   - Check that `.env` exists in the project root and contains `GOOGLE_API_KEY=...`.
+  - Get your key from: https://makersuite.google.com/app/apikey
   - Restart the terminal after editing `.env` if necessary.
 
-- **Streamlit app doesn’t open**
+- **`GROQ_API_KEY not found`**
+  - Check that `.env` exists and contains `GROQ_API_KEY=...`.
+  - Get your key from: https://console.groq.com/keys
+  - Fundamental Knowledge Assessment will not work without this key.
+
+- **Streamlit app doesn't open**
   - Confirm virtual env is active.
-  - Run `streamlit run interview.py` from the project root.
+  - Run `streamlit run app.py` from the project root (not `interview.py`).
 
 - **No CVs found**
   - Check that the directory path is correct and contains `.pdf` files.
+
+- **Fundamental Assessment questions not generating**
+  - Verify `GROQ_API_KEY` is set correctly in `.env`
+  - Check your Groq API quota/limits at https://console.groq.com
+  - The system will use fallback questions if generation fails
+
+- **Cannot proceed to interview after assessment**
+  - Ensure the candidate scored ≥ 80/100 in Fundamental Knowledge Assessment
+  - Check the assessment results page for the exact score
+  - Candidates with scores below 80 cannot proceed (by design)
 
 - **Whisper / audio errors**
   - Make sure `ffmpeg` is installed on your system if Whisper or `pydub` complain.
   - On Windows, you may need to add `ffmpeg` to your PATH.
 
 If your team runs into any other setup issues, capture the exact error message and command you ran, and you can update this README with additional hints as needed.
-
 
